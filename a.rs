@@ -2131,3 +2131,304 @@ return 0;
 }
 
 // Slip16
+SIA71
+
+#include <stdio.h>
+#include <GL/glut.h>
+#include <stdbool.h>
+
+bool firstClick = true;
+bool secondClick = false;
+int _x, _y;
+
+int xmin = 100, ymin = 100, xmax = 400, ymax = 250;
+int input[2][4] = {{320, 450, 450, 320}, {220, 220, 300, 300}};
+
+int wxmin = 320, wymin = 220, wxmax = 450, wymax = 300;
+
+float wfcol[3] = {0.0, 0.0, 0.0};
+float bcol[3] = {1.0, 0.0, 0.0};
+
+float bbcol[3] = {0.0, 0.0, 0.0};
+float bodyfcol[3] = {1.0, 0.0, 0.0};
+int m = 0;
+
+int car_body[2][10] = {{100, 400, 400, 100}, {100, 100, 250, 250}};
+
+void BresCircle(int xc, int yc, int r){
+    int x = 0, y = r;
+    int d = 3 - 2 * r;
+    do{
+        glVertex2d(xc + x, yc + y);
+        glVertex2d(xc + x, yc - y);
+        glVertex2d(xc - x, yc + y);
+        glVertex2d(xc - x, yc - y);
+        glVertex2d(xc + y, yc + x);
+        glVertex2d(xc + y, yc - x);
+        glVertex2d(xc - y, yc + x);
+        glVertex2d(xc - y, yc - x);
+    if(d < 0){
+        x++;
+        d += 4 * x + 6;
+    }else{
+        x++;
+        y--;
+        d += 4 * x - 4 * y + 10;        
+    }
+    }while(y >=x);
+}
+
+void BFill(int x, int y, float bcol[], float fcol[3]){
+    float c[3];
+    glReadPixels(x, y, 1, 1, GL_RGB, GL_FLOAT, c);
+    if((c[0] != bcol[0] || c[1] != bcol[1] || c[2] != bcol[2]) && (c[0] != fcol[0] || c[1] != fcol[1] || c[2] != fcol[2])){
+        glColor3f(fcol[0], fcol[1], fcol[2]);
+        glBegin(GL_POINTS);
+        glVertex2d(x, y);
+        glEnd();
+        glFlush();
+        
+        BFill(x + 1, y, bcol, fcol);
+        BFill(x - 1, y, bcol, fcol);
+        BFill(x, y + 1, bcol, fcol);
+        BFill(x, y - 1, bcol, fcol);
+    }
+}
+
+void HalfCircle(int xc, int yc, int r){
+    int x = 0, y = r;
+    int d = 3 - 2 * r;
+    do{
+        glVertex2d(xc + x, yc + y);
+        glVertex2d(xc - x, yc + y);
+        glVertex2d(xc + y, yc + x);
+        glVertex2d(xc - y, yc + x);
+        /*
+        glVertex2d(xc + y, yc + x);
+        glVertex2d(xc - x, yc - y);
+        glVertex2d(xc + y, yc - x);
+        glVertex2d(xc - y, yc + x);
+        glVertex2d(xc - y, yc - x);
+        glVertex2d(xc + x, yc - y);
+        glVertex2d(xc - y, yc - x);
+        glVertex2d(xc + y, yc - x);
+        glVertex2d(xc - x, yc - y);
+        */
+    if(d < 0){
+        x++;
+        d += 4 * x + 6;
+    }else{
+        x++;
+        y--;
+        d += 4 * x - 4 * y + 10;        
+    }
+    }while(y >=x);
+}
+
+
+void BresenhemLine(int xa, int ya, int xb, int yb){
+    int d;
+    int c, r, f;
+    
+    int dx = xb - xa;
+    int dy = yb - ya;
+    
+    // int abs_dx = abs(dx);
+    // int abs_dy = abs(dy);
+    if (abs(dx) > abs(dy)) {
+          
+          d = 2*abs(dy) - abs(dx);
+     
+        if (dx > 0) {
+            c = xa;
+            r = ya;
+            f = xb;
+        } else {
+            c = xb;
+            r = yb;
+            f = xa;
+        }
+
+        while (f > c) {
+        
+            if (d < 0) {
+                c++;
+                d += 2 * abs(dy);
+            } else {
+                if (dx > 0 && dy > 0 || dx < 0 && dy < 0){
+                    r++;
+                   
+                } else {
+                    r--;
+                }
+                c++;
+                d = d + 2 * abs(dy) - 2 * abs(dx);
+            }
+            glVertex2d(c, r);
+        }
+    }else{
+          d = 2*abs(dx) - abs(dy);
+
+        if (dy > 0) {
+            c = xa;
+            r = ya;
+            f = yb;
+        } else {
+            c = xb;
+            r = yb;
+            f = ya;
+        }
+
+        while (f > r) {
+            if (d < 0) {
+                r++;
+                d += 2 * abs(dx);
+            } else {
+                if (dx > 0 && dy > 0 || dx < 0 && dy < 0){
+                    c++;
+                   
+                } else {
+                    c--;
+                }
+                r++;
+                d = d + 2 * abs(dx) - 2 * abs(dy);
+            }
+            glVertex2d(c, r);
+        }
+    }
+}
+
+int output[2][10];
+
+void LeftClip(int xa, int ya, int xb, int yb){
+
+    float slope = (float) (yb - ya) / (xb - xa);
+    if(xa > wxmin && xb > wxmin){ //In - In
+        printf("ININ");
+        output[0][m] = xb;
+        output[1][m] = yb;
+        m++;
+    }
+    if(xa > wxmin && xb < wxmin){ //In - Out
+        printf("In out");
+        output[0][m] = wxmin;
+        output[1][m] = ya + slope * (wxmin - xa);
+        m++;
+    }
+    if(xa < wxmin && xb > wxmin){ //Out - In
+        printf("Out In");
+        output[0][m] = wxmin;
+        output[1][m] = ya + slope * (wxmin - xa);
+        output[0][m + 1] = xb;
+        output[1][m + 1] = yb;
+        m = m + 2;
+    }
+    
+}
+
+void Draw(){
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBegin(GL_POINTS);
+    
+    // Car body
+    BresenhemLine(xmax, ymin, xmax, ymax);
+    BresenhemLine(xmax, ymax, xmin, ymax);
+    BresenhemLine(xmin, ymax, xmin, ymin);
+    
+    // Dashed line
+    BresenhemLine(xmin, ymin, xmax-270, ymin);
+    BresenhemLine(xmin + 270, ymin, xmax, ymin);
+    BresenhemLine(xmin + 110, ymin, 290, ymin);
+    
+    // Wheels
+    glColor3f(1, 0, 0);
+    BresCircle(170, 100, 30);
+    BresCircle(330, 100, 30);
+    
+    glColor3f(0, 0, 0);
+    // Outer wheel (HALF)
+    HalfCircle(170, 100, 40);
+    HalfCircle(330, 100, 40);
+    
+    // Window
+    
+    /*
+    int i;
+    for(i = 0; i < 3; i++){
+        BresenhemLine(input[0][i], input[1][i], input[0][i + 1], input[1][i + 1]);
+    }
+    BresenhemLine(input[0][i], input[1][i], input[0][0], input[1][1]);
+    */
+    
+    BresenhemLine(wxmin, wymin, wxmax, wymin);
+    BresenhemLine(wxmax, wymin, wxmax, wymax);
+    BresenhemLine(wxmax, wymax, wxmin, wymax);
+    BresenhemLine(wxmin, wymax, wxmin, wymin);
+    
+    // Left clip
+    m = 0;
+    int i;
+    for(i = 0; i < 3; i++){
+        LeftClip(car_body[0][i], car_body[1][i], car_body[0][i+1], car_body[1][i+1]);
+    }
+    LeftClip(car_body[0][i], car_body[1][i], car_body[0][0], car_body[1][0]);
+    
+    /*
+    for(int i = 0; i < 2; i++){
+        for(int j = 0; j < m; j++){
+            
+        }
+    }
+    */
+    
+    printf("\n");
+    for(int i = 0; i < 2; i++){
+        for(int j = 0; j < 5; j++){
+            printf("%d\t", output[i][j]);
+        }
+        printf("\n");
+    }
+    
+    glEnd();
+    glFlush();
+    
+    // Wheel color
+    
+    BFill(171, 101, bcol, wfcol);
+    BFill(331, 101, bcol, wfcol);
+    
+    // Body color
+    BFill(201, 200, bbcol, bodyfcol);
+}
+
+void Mouse(int button, int state, int x, int y){
+    if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN){
+        if(firstClick){
+            _x = x;    
+            _y = 480 - y;
+            firstClick = false;
+            secondClick = false;
+        }else{
+            _x = x;
+            _y = 480 - y;
+            secondClick = true;
+            glutPostRedisplay();
+            firstClick = true;
+        }
+    }
+}
+
+int main(int argc, char **argv){
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_RGB | GLUT_SINGLE);
+    glutInitWindowSize(640, 480);
+    glutInitWindowPosition(0, 0);
+    glutCreateWindow("SIA71");
+    glClearColor(1.0, 1.0, 1.0, 0);
+    glColor3f(0, 0, 0);
+    gluOrtho2D(0, 640, 0, 480);
+    // glutMouseFunc(Mouse);
+    glutDisplayFunc(Draw);
+    glutMainLoop();
+    return 0;    
+}
